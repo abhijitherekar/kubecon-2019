@@ -1,0 +1,167 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sleep-demo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sleep-demo
+  labels:
+    app: sleep-demo
+spec:
+  ports:
+  - port: 80
+    name: http
+  selector:
+    app: sleep-demo
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: sleep-demo
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sleep-demo
+    spec:
+      serviceAccountName: sleep-demo
+      containers:
+      - name: sleep-demo
+        image: pstauffer/curl
+        command: ["/bin/sleep", "3650d"]
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-demo
+  labels:
+    app: httpbin-demo
+spec:
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 80
+  selector:
+    app: httpbin-demo
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: httpbin-demo
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: httpbin-demo
+        version: v1
+    spec:
+      containers:
+      - image: docker.io/kennethreitz/httpbin
+        imagePullPolicy: IfNotPresent
+        name: httpbin-demo
+        ports:
+        - containerPort: 80
+---
+apiVersion: k8s.aporeto.io/v1beta1
+kind: ServiceMapping
+metadata:
+  namespace: istio-demo
+  name: sleep-demo
+spec:
+  mapping:
+    serviceName: sleep-demo
+  template:
+    spec:
+      type: HTTP
+      exposedAPIs:
+      - - spec:rest=demoapiserver-internal-sleep-demo
+---
+apiVersion: k8s.aporeto.io/v1beta1
+kind: ServiceMapping
+metadata:
+  namespace: istio-demo
+  name: httpbin-demo
+spec:
+  mapping:
+    serviceName: httpbin-demo
+  template:
+    spec:
+      type: HTTP
+      exposedAPIs:
+      - - spec:rest=demoapiserver-internal-httpbin-demo
+---
+apiVersion: api.aporeto.io/v1beta1
+kind: HTTPResourceSpec
+metadata:
+  name: httpbin-spec-demo
+  namespace: istio-demo
+  labels:
+    app: httpbin-demo
+spec:
+  associatedTags:
+  - spec:rest=demoapiserver-internal-httpbin-demo
+  endpoints:
+  - name: httpbin-demo
+    URI: "/*"
+    public: true
+    methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - HEAD
+---
+apiVersion: api.aporeto.io/v1beta1
+kind: HTTPResourceSpec
+metadata:
+  name: sleep-spec-demo
+  namespace: istio-demo
+  labels:
+    app: sleep-demo
+spec:
+  associatedTags:
+  - spec:rest=demoapiserver-internal-sleep-demo
+  endpoints:
+  - name: sleep-demo
+    URI: "/*"
+    public: true
+    methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - HEAD
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: aporeto
+  namespace: istio-demo
+spec:
+  filters:
+  - listenerMatch:
+      listenerType: SIDECAR_INBOUND
+      listenerProtocol: HTTP
+    filterName: envoy.ext_authz
+    filterType: HTTP
+    filterConfig:
+      grpc_service:
+        google_grpc:
+          target_uri: 127.0.0.1:1999
+          stat_prefix: apo-ingress-auth
+  - listenerMatch:
+      listenerType: SIDECAR_OUTBOUND
+      listenerProtocol: HTTP
+    filterName: envoy.ext_authz
+    filterType: HTTP
+    filterConfig:
+      grpc_service:
+        google_grpc:
+          target_uri: 127.0.0.1:1998
+          #target_uri: unix:@aporeto_envoy_authz_ingress
+          stat_prefix: apo-egress-auth
