@@ -1,12 +1,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  namespace: istio-demo
   name: sleep-demo
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: sleep-demo
+  namespace: istio-demo
   labels:
     app: sleep-demo
 spec:
@@ -19,6 +21,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
+  namespace: istio-demo
   name: sleep-demo
 spec:
   replicas: 1
@@ -37,6 +40,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: istio-demo
   name: httpbin-demo
   labels:
     app: httpbin-demo
@@ -51,6 +55,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
+  namespace: istio-demo
   name: httpbin-demo
 spec:
   replicas: 1
