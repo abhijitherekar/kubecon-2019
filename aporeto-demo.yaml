@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: aporeto-demo
+  name: httpbin
+  labels:
+    app: httpbin
+spec:
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 80
+  selector:
+    app: httpbin
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: aporeto-demo
+  name: httpbin
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: httpbin
+        version: v1
+    spec:
+      containers:
+      - image: docker.io/kennethreitz/httpbin
+        imagePullPolicy: IfNotPresent
+        name: httpbin
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: aporeto-demo
+  name: sleep
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: aporeto-demo
+  name: sleep
+  labels:
+    app: sleep
+spec:
+  ports:
+  - port: 80
+    name: http
+  selector:
+    app: sleep
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: aporeto-demo
+  name: sleep
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sleep
+    spec:
+      serviceAccountName: sleep
+      containers:
+      - name: sleep
+        image: pstauffer/curl
+        command: ["/bin/sleep", "3650d"]
+        imagePullPolicy: IfNotPresent
+---
+apiVersion: api.aporeto.io/v1beta1
+kind: HTTPResourceSpec
+metadata:
+  namespace: aporeto-demo
+  name: sleep-spec
+  labels:
+    app: sleep
+spec:
+  associatedTags:
+  - spec:rest=demoapiserver-internal
+  endpoints:
+  - name: sleep
+    URI: "/*"
+    public: true
+    methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - HEAD
+---
+apiVersion: api.aporeto.io/v1beta1
+kind: HTTPResourceSpec
+metadata:
+  namespace: aporeto-demo
+  name: httpbin-spec
+  labels:
+    app: httpbin
+spec:
+  associatedTags:
+  - spec:rest=demoapiserver-internal
+  endpoints:
+  - name: httpbin
+    URI: "/*"
+    public: true
+    methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - HEAD
+---
+apiVersion: k8s.aporeto.io/v1beta1
+kind: ServiceMapping
+metadata:
+  namespace: aporeto-demo
+  name: sleep
+spec:
+  mapping:
+    serviceName: sleep
+  template:
+    spec:
+      type: HTTP
+      exposedAPIs:
+      - - spec:rest=demoapiserver-internal
+---
+apiVersion: k8s.aporeto.io/v1beta1
+kind: ServiceMapping
+metadata:
+  namespace: aporeto-demo
+  name: httpbin
+spec:
+  mapping:
+    serviceName: httpbin
+  template:
+    spec:
+      type: HTTP
+      exposedAPIs:
+      - - spec:rest=demoapiserver-internal
