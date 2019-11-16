@@ -1,0 +1,11 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: dst-aporeto-httpbin
+spec:
+  host: httpbin.istio-test.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+      subjectAltNames: 
+      - spiffe://aporeto-tme/kubecon-2019/kubecon-istio/istio-test/httpbin-n4lp4
