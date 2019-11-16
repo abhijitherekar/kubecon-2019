@@ -1,2 +1,6 @@
 # kubecon-2019
-Yaml files for kubeCon demo
+This repo is about the Istio Integration with Aporeto Policy model.
+
+Some of the Files are referred from the Istio examples. 
+
+Yaml files for kubeCon demo. 
